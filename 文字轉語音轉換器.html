@@ -1,0 +1,413 @@
+<!DOCTYPE html>
+<html lang="zh-HK">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>文字轉語音 - Text to Speech Converter</title>
+    <style>
+        :root {
+            --color-primary: #38bdf8;
+            --color-primary-hover: #0284c7;
+            --color-bg: #ffffff;
+            --color-text: #0f172a;
+            --color-text-secondary: #475569;
+            --color-border: #e2e8f0;
+            --color-success: #10b981;
+            --color-warning: #f59e0b;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+            color: var(--color-text);
+        }
+
+        .container {
+            width: 100%;
+            max-width: 600px;
+            background: var(--color-bg);
+            border-radius: 16px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            padding: 40px;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 40px;
+        }
+
+        .header h1 {
+            font-size: 28px;
+            font-weight: 700;
+            color: var(--color-text);
+            margin-bottom: 8px;
+        }
+
+        .header p {
+            font-size: 14px;
+            color: var(--color-text-secondary);
+        }
+
+        .form-group {
+            margin-bottom: 24px;
+        }
+
+        .form-label {
+            display: block;
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--color-text);
+            margin-bottom: 8px;
+        }
+
+        .voice-select {
+            width: 100%;
+            padding: 12px 16px;
+            border: 2px solid var(--color-border);
+            border-radius: 8px;
+            font-size: 14px;
+            color: var(--color-text);
+            background-color: var(--color-bg);
+            cursor: pointer;
+            transition: border-color 0.3s ease, box-shadow 0.3s ease;
+            font-family: inherit;
+        }
+
+        .voice-select:hover {
+            border-color: var(--color-primary);
+        }
+
+        .voice-select:focus {
+            outline: none;
+            border-color: var(--color-primary);
+            box-shadow: 0 0 0 3px rgba(56, 189, 248, 0.1);
+        }
+
+        .text-input-wrapper {
+            position: relative;
+        }
+
+        .textarea {
+            width: 100%;
+            min-height: 150px;
+            padding: 16px;
+            padding-right: 50px;
+            border: 2px solid var(--color-border);
+            border-radius: 8px;
+            font-size: 14px;
+            color: var(--color-text);
+            font-family: inherit;
+            resize: vertical;
+            transition: border-color 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        .textarea:focus {
+            outline: none;
+            border-color: var(--color-primary);
+            box-shadow: 0 0 0 3px rgba(56, 189, 248, 0.1);
+        }
+
+        .loading-spinner {
+            position: absolute;
+            right: 16px;
+            top: 16px;
+            width: 24px;
+            height: 24px;
+            display: none;
+            z-index: 10;
+        }
+
+        .loading-spinner.active {
+            display: block;
+        }
+
+        .spinner {
+            width: 100%;
+            height: 100%;
+            border: 3px solid rgba(56, 189, 248, 0.2);
+            border-top-color: var(--color-primary);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .button-group {
+            display: flex;
+            gap: 12px;
+            margin-top: 32px;
+        }
+
+        .btn {
+            flex: 1;
+            padding: 12px 24px;
+            border: none;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            font-family: inherit;
+        }
+
+        .btn-send {
+            background-color: var(--color-primary);
+            color: white;
+        }
+
+        .btn-send:hover:not(:disabled) {
+            background-color: var(--color-primary-hover);
+            transform: translateY(-2px);
+            box-shadow: 0 8px 16px rgba(56, 189, 248, 0.3);
+        }
+
+        .btn-send:active:not(:disabled) {
+            transform: translateY(0);
+        }
+
+        .btn-download {
+            background-color: var(--color-warning);
+            color: white;
+        }
+
+        .btn-download:hover:not(:disabled) {
+            background-color: #d97706;
+            transform: translateY(-2px);
+            box-shadow: 0 8px 16px rgba(245, 158, 11, 0.3);
+        }
+
+        .btn-download:active:not(:disabled) {
+            transform: translateY(0);
+        }
+
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        .status-message {
+            margin-top: 16px;
+            padding: 12px 16px;
+            border-radius: 8px;
+            font-size: 14px;
+            display: none;
+            text-align: center;
+        }
+
+        .status-message.success {
+            background-color: rgba(16, 185, 129, 0.1);
+            color: #047857;
+            border: 1px solid rgba(16, 185, 129, 0.3);
+            display: block;
+        }
+
+        .status-message.error {
+            background-color: rgba(239, 68, 68, 0.1);
+            color: #dc2626;
+            border: 1px solid rgba(239, 68, 68, 0.3);
+            display: block;
+        }
+
+        .character-count {
+            font-size: 12px;
+            color: var(--color-text-secondary);
+            margin-top: 8px;
+        }
+
+        .voice-list {
+            max-height: 300px;
+            overflow-y: auto;
+        }
+
+        @media (max-width: 600px) {
+            .container {
+                padding: 20px;
+            }
+
+            .header h1 {
+                font-size: 24px;
+            }
+
+            .button-group {
+                flex-direction: column;
+            }
+
+            .btn {
+                width: 100%;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🎤 文字轉語音</h1>
+            <p>Text to Speech Converter - Google TTS</p>
+        </div>
+
+        <form id="ttsForm">
+            <div class="form-group">
+                <label class="form-label" for="voiceSelect">選擇聲音 / Select Voice:</label>
+                <select id="voiceSelect" class="voice-select">
+                    <option value="zh-CN-XiaoyiNeural">zh-CN-XiaoyiNeural (中文 - 小怡)</option>
+                    <option value="zh-CN-YunxiNeural">zh-CN-YunxiNeural (中文 - 云希)</option>
+                    <option value="zh-CN-YunjianNeural">zh-CN-YunjianNeural (中文 - 云健)</option>
+                    <option value="zh-HK-HiuGaaiNeural">zh-HK-HiuGaaiNeural (粵語 - 曉蓋)</option>
+                    <option value="zh-HK-WanLungNeural">zh-HK-WanLungNeural (粵語 - 雲龍)</option>
+                    <option value="zh-TW-HsiaoChenNeural">zh-TW-HsiaoChenNeural (繁體中文 - 曉臻)</option>
+                    <option value="zh-TW-YunJheNeural">zh-TW-YunJheNeural (繁體中文 - 雲哲)</option>
+                    <option value="en-US-AriaNeural">en-US-AriaNeural (English - Aria)</option>
+                    <option value="en-GB-SoniaNeural">en-GB-SoniaNeural (English - Sonia)</option>
+                    <option value="ja-JP-NanamiNeural">ja-JP-NanamiNeural (日本語 - Nanami)</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label" for="textInput">輸入文字 / Input Text:</label>
+                <div class="text-input-wrapper">
+                    <textarea id="textInput" class="textarea" placeholder="請輸入要轉換成語音的文字... / Enter text to convert to speech..." maxlength="10000"></textarea>
+                    <div class="loading-spinner" id="loadingSpinner">
+                        <div class="spinner"></div>
+                    </div>
+                </div>
+                <div class="character-count">
+                    <span id="charCount">0</span> / 10000 字符
+                </div>
+            </div>
+
+            <div class="button-group">
+                <button type="button" class="btn btn-send" id="sendBtn">
+                    <span>🎵 發送 / Send</span>
+                </button>
+                <button type="button" class="btn btn-download" id="downloadBtn" disabled>
+                    <span>⬇️ 下載 / Download</span>
+                </button>
+            </div>
+
+            <div class="status-message" id="statusMessage"></div>
+        </form>
+    </div>
+
+    <script>
+        const form = document.getElementById('ttsForm');
+        const textInput = document.getElementById('textInput');
+        const voiceSelect = document.getElementById('voiceSelect');
+        const sendBtn = document.getElementById('sendBtn');
+        const downloadBtn = document.getElementById('downloadBtn');
+        const loadingSpinner = document.getElementById('loadingSpinner');
+        const statusMessage = document.getElementById('statusMessage');
+        const charCount = document.getElementById('charCount');
+
+        let audioUrl = null;
+        let audioBlob = null;
+
+        // 更新字符計數
+        textInput.addEventListener('input', () => {
+            charCount.textContent = textInput.value.length;
+        });
+
+        // 發送按鈕點擊事件
+        sendBtn.addEventListener('click', async () => {
+            const text = textInput.value.trim();
+            const voice = voiceSelect.value;
+
+            if (!text) {
+                showStatus('請輸入文字 / Please enter text', 'error');
+                return;
+            }
+
+            await convertTextToSpeech(text, voice);
+        });
+
+        // 下載按鈕點擊事件
+        downloadBtn.addEventListener('click', () => {
+            if (audioBlob) {
+                const url = URL.createObjectURL(audioBlob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `speech_${Date.now()}.mp3`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+                showStatus('下載開始 / Download started', 'success');
+            }
+        });
+
+        // 文字轉語音功能
+        async function convertTextToSpeech(text, voice) {
+            try {
+                // 顯示加載動畫
+                loadingSpinner.classList.add('active');
+                sendBtn.disabled = true;
+                statusMessage.className = 'status-message';
+                
+                // Call local API
+                const response = await fetch('/api/speak', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ text, voice })
+                });
+
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(errorData.error || 'Server error');
+                }
+
+                audioBlob = await response.blob();
+                audioUrl = URL.createObjectURL(audioBlob);
+
+                // 自動播放
+                const audio = new Audio(audioUrl);
+                audio.play().catch(err => {
+                    console.log('自動播放被阻止 / Autoplay blocked:', err);
+                });
+
+                downloadBtn.disabled = false;
+                showStatus(`轉換成功！文字已轉為語音 / Success! (${(audioBlob.size / 1024).toFixed(2)} KB)`, 'success');
+
+            } catch (error) {
+                console.error('轉換失敗 / Conversion failed:', error);
+                showStatus(`轉換失敗 / Conversion failed: ${error.message}`, 'error');
+                downloadBtn.disabled = true;
+            } finally {
+                loadingSpinner.classList.remove('active');
+                sendBtn.disabled = false;
+            }
+        }
+
+        // 顯示狀態訊息
+        function showStatus(message, type) {
+            statusMessage.textContent = message;
+            statusMessage.className = `status-message ${type}`;
+            setTimeout(() => {
+                if (type === 'success') {
+                    statusMessage.className = 'status-message';
+                }
+            }, 5000);
+        }
+
+        // Initialize with default state
+        downloadBtn.disabled = true;
+    </script>
+</body>
+</html>
